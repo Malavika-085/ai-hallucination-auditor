@@ -4,14 +4,19 @@ FROM python:3.10-slim
 # Set working directory
 WORKDIR /app
 
-# Copy the requirements/pyproject and install dependencies
+# 1. Copy dependency definitions first (for caching)
 COPY requirements.txt .
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install -e .
+COPY uv.lock .
 
-# Copy all project files
+# 2. Install external dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 3. Copy ALL project files (Mandatory before pip install -e .)
 COPY . .
+
+# 4. Install the regional project
+RUN pip install -e .
 
 # Create logs directory
 RUN mkdir -p logs
@@ -19,8 +24,5 @@ RUN mkdir -p logs
 # Hugging Face Spaces MUST listen on Port 7860
 EXPOSE 7860
 
-# Entrypoint logic:
-# - Default: runs inference.py (Benchmark mode)
-# - MODE=API: runs the 'server' entry point (FastAPI)
-# - MODE=UI: runs Streamlit on server/ui.py
-CMD ["sh", "-c", "if [ \"$MODE\" = \"API\" ]; then server; elif [ \"$MODE\" = \"UI\" ]; then streamlit run server/ui.py --server.port 7860 --server.address 0.0.0.0; else python inference.py; fi"]
+# Entrypoint logic
+CMD ["sh", "-c", \"if [ \\"$MODE\\" = \\"API\\" ]; then server; elif [ \\"$MODE\\" = \\"UI\\" ]; then streamlit run server/ui.py --server.port 7860 --server.address 0.0.0.0; else python inference.py; fi\"]
