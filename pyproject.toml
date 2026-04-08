@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-hallucination-auditor"
+version = "1.0.0"
+description = "AI Reliability & Risk Auditing System — OpenEnv Hallucination Benchmark"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic",
+    "openenv-core",
+    "fastapi",
+    "uvicorn",
+    "streamlit",
+    "pandas",
+    "openai",
+    "python-multipart"
+]
+
+[project.scripts]
+audit-inference = "inference:run_auditor"
+audit-api = "uvicorn api:app"
+audit-ui = "streamlit run app.py"
+
+[tool.setuptools]
+py-modules = ["env", "models", "tasks", "inference", "api", "app", "service", "batch_eval"]
