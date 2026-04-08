@@ -1,0 +1,8 @@
+pydantic
+openenv-core
+fastapi
+uvicorn
+streamlit
+pandas
+python-multipart
+openai

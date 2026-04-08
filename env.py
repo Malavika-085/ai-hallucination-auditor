@@ -1,0 +1,76 @@
+import json
+from typing import Any, Dict, Optional, Tuple
+from openenv_core import Environment
+from models import Action, Observation, Reward
+from tasks import TASKS, grade_action
+
+class HallucinationEnv(Environment):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.current_task_idx = -1
+        self.total_reward = 0.0
+        self.done = False
+
+    def reset(self, options: Optional[Dict[str, Any]] = None) -> Observation:
+        """
+        Resets the environment and loads the next task in the cycle.
+        """
+        self.current_task_idx = (self.current_task_idx + 1) % len(TASKS)
+        task = TASKS[self.current_task_idx]
+        
+        self.done = False
+        return Observation(
+            question=task["question"],
+            model_answer=task["model_answer"]
+        )
+
+    def step(self, action: Action) -> Tuple[Observation, float, bool, Dict[str, Any]]:
+        """
+        Evaluates the auditor's classification and terminates the episode.
+        """
+        if self.done:
+            raise RuntimeError("Step called on terminated environment. Please call reset().")
+            
+        task = TASKS[self.current_task_idx]
+        reward_score = grade_action(action, task)
+        
+        self.total_reward += reward_score
+        self.done = True # Single-step task
+        
+        # Consistent with Gymnasium/OpenEnv interface
+        obs = Observation(question=task["question"], model_answer=task["model_answer"])
+        info = {
+            "task_difficulty": task["difficulty"],
+            "ground_truth": task["is_hallucination"],
+            "reward_breakdown": f"Score: {reward_score:.2f}"
+        }
+        
+        return obs, reward_score, self.done, info
+
+    def state(self) -> Dict[str, Any]:
+        """
+        Returns the internal state of the environment.
+        """
+        return {
+            "current_task_idx": self.current_task_idx,
+            "total_reward": self.total_reward,
+            "tasks_completed": self.current_task_idx + 1 if self.current_task_idx >= 0 else 0,
+            "is_done": self.done
+        }
+
+if __name__ == "__main__":
+    # Quick visual check
+    env = HallucinationEnv()
+    obs = env.reset()
+    print(f"Reset: {obs}")
+    # Test action with new fields
+    from models import RiskLevel, RecommendedAction
+    action = Action(
+        is_hallucination=True, 
+        confidence=0.95, 
+        risk_level=RiskLevel.HIGH,
+        recommended_action=RecommendedAction.REDACT,
+        reasoning="A blatant error in geographical fact."
+    )
+    obs, reward, done, info = env.step(action)
+    print(f"Step Reward: {reward}, Done: {done}, Info: {info}")

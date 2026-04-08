@@ -1,0 +1,19 @@
+name: hallucination_auditor
+version: 1.0.0
+description: "AI Hallucination Auditor — evaluates model-generated answers for factual hallucinations across 3 difficulty levels."
+entrypoint: env:HallucinationEnv
+observation_space: 
+  type: dict
+  fields:
+    question: string
+    model_answer: string
+action_space:
+  type: dict
+  fields:
+    is_hallucination: boolean
+    confidence: float
+    reasoning: string
+reward_range: [0.0, 1.0]
+metadata:
+  difficulty: "Mixed (Easy, Medium, Hard)"
+  category: "Safety/Evaluation"
