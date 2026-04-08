@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from service import service
+from .service import service
 from typing import List, Dict, Any
 
 app = FastAPI(
@@ -68,6 +68,11 @@ async def state_endpoint():
     """Get the current state of the environment."""
     return service.state()
 
-if __name__ == "__main__":
+def main():
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    port = int(os.getenv("PORT", 7860))
+    uvicorn.run(app, host="0.0.0.0", port=port)
+
+if __name__ == "__main__":
+    main()

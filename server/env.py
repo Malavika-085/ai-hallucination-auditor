@@ -1,8 +1,8 @@
 import json
 from typing import Any, Dict, Optional, Tuple
 from openenv_core import Environment
-from models import Action, Observation, Reward
-from tasks import TASKS, grade_action
+from .models import Action, Observation, Reward
+from .tasks import TASKS, grade_action
 
 class HallucinationEnv(Environment):
     def __init__(self, **kwargs):
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     obs = env.reset()
     print(f"Reset: {obs}")
     # Test action with new fields
-    from models import RiskLevel, RecommendedAction
+    from .models import RiskLevel, RecommendedAction
     action = Action(
         is_hallucination=True, 
         confidence=0.95, 

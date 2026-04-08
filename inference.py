@@ -3,8 +3,8 @@ import json
 import logging
 from typing import List, Dict, Any
 from openai import OpenAI
-from env import HallucinationEnv
-from models import Action, RiskLevel, RecommendedAction
+from server.env import HallucinationEnv
+from server.models import Action, RiskLevel, RecommendedAction
 
 # Mandatory Environment Variables
 API_BASE_URL = os.getenv("API_BASE_URL")

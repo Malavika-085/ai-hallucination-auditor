@@ -20,9 +20,9 @@ dependencies = [
 ]
 
 [project.scripts]
+server = "server.app:main"
 audit-inference = "inference:run_auditor"
-audit-api = "uvicorn api:app"
-audit-ui = "streamlit run app.py"
+audit-ui = "streamlit run server/ui.py"
 
 [tool.setuptools]
-py-modules = ["env", "models", "tasks", "inference", "api", "app", "service", "batch_eval"]
+packages = ["server"]

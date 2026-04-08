@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import pandas as pd
-from service import service
+from .service import service
 
 st.set_page_config(
     page_title="AI Reliability & Risk Auditor",

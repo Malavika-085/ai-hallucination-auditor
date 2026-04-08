@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from models import Action, RiskLevel, RecommendedAction
+from .models import Action, RiskLevel, RecommendedAction
 
 TASKS: List[Dict[str, Any]] = [
     {

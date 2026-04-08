@@ -63,15 +63,20 @@ run_audit_system.bat
 ## 🐳 Docker Deployment
 The application supports three modes via the `MODE` environment variable:
 - `MODE=BENCHMARK` (Default): `python inference.py`
-- `MODE=API`: `uvicorn api:app --host 0.0.0.0 --port 7860`
-- `MODE=UI`: `streamlit run app.py --server.port 7860`
+- `MODE=API`: `server` (Runs the project entry point)
+- `MODE=UI`: `streamlit run server/ui.py --server.port 7860`
 
 ---
 
 ## 📂 Project Structure
-- `api.py`: FastAPI server (OpenEnv compliant)
-- `app.py`: Streamlit Dashboard
-- `service.py`: Core Auditing Logic & Logging
-- `batch_eval.py`: CSV/JSON Batch processing
+- `server/`
+    - `app.py`: FastAPI server (OpenEnv compliant)
+    - `ui.py`: Streamlit Dashboard
+    - `service.py`: Core Auditing Logic & Logging
+    - `models.py`: Data schemas
+    - `env.py`: OpenEnv Environment
+    - `tasks.py`: Predetermined task logic
 - `inference.py`: Mandatory hackathon inference script
+- `pyproject.toml`: Modern project configuration
+- `uv.lock`: Dependency lock file
 - `logs/`: Persisted audit history
