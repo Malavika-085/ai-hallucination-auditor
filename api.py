@@ -21,6 +21,15 @@ class AuditResponse(BaseModel):
     score: float
     explanation: str
 
+@app.get("/")
+async def root():
+    return {
+        "message": "AI Reliability & Risk Auditing System is Online",
+        "mode": "API",
+        "status": "Ready for OpenEnv Evaluation",
+        "endpoints": ["/reset", "/step", "/state", "/audit", "/logs"]
+    }
+
 @app.post("/audit", response_model=AuditResponse)
 async def audit_endpoint(request: AuditRequest):
     """
