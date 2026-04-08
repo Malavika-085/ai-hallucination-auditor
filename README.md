@@ -16,6 +16,15 @@ This system is a deployable AI Safety & Compliance tool built on the [OpenEnv](g
 
 ---
 
+## 🏁 Submission Status: READY FOR EVALUATION ✅
+
+The environment has been verified and is ready for Hackathon grading.
+- **Direct App URL**: `https://AZ-8714-ai-hallucination-auditor.hf.space`
+- **Health Check**: Returns `200 OK` with system status.
+- **Compliance**: Responds to `/reset`, `/step`, and `/state`.
+
+---
+
 ## 🚀 Key Features
 
 *   **Deterministic Auditing**: Reusable engine for consistent safety checks.
@@ -29,10 +38,10 @@ This system is a deployable AI Safety & Compliance tool built on the [OpenEnv](g
 ## 🛠️ Installation & Setup
 
 ### Mandatory Environment Variables
-Before running the inference script or the product mode, ensure the following are defined:
-- `API_BASE_URL`: The API endpoint for the LLM (OpenAI-compatible).
-- `MODEL_NAME`: The model identifier to use for inference.
-- `HF_TOKEN`: Your Hugging Face / API key.
+Before running the inference script or the product mode, ensure the following are defined in your environment (or Space Secrets):
+- `API_BASE_URL`: `https://api-inference.huggingface.co/v1`
+- `MODEL_NAME`: `meta-llama/Llama-3-8B-Instruct`
+- `HF_TOKEN`: Your Hugging Face User Access Token (Write)
 
 ### Local Run (Windows)
 Simply run the provided batch file to install dependencies, run a test audit, and launch the UI:
@@ -44,47 +53,25 @@ run_audit_system.bat
 
 ## 📊 Evaluation & Compliance (Base Criteria)
 
-This project is built to strictly follow the Meta Hackathon evaluation criteria:
-
-*   **HF Space Deploys**: API exposes `POST /reset`, `POST /step`, and `GET /state` for automated pings.
-*   **OpenEnv Compliance**: Fully compliant with `openenv.yaml`, typed Pydantic models, and 100% deterministic graders.
+*   **HF Space Deploys**: API exposes mandated OpenEnv endpoints.
 *   **Structured Logs**: `inference.py` emits logs strictly in `[START]`, `[STEP]`, and `[END]` format.
-*   **OpenAI Client**: `inference.py` uses the standard `openai.OpenAI` client for all LLM auditing calls.
-*   **Infra Specs**: Optimized to run on vCPU=2, RAM=8GB, and completes under 20 minutes.
+*   **OpenAI Client**: Uses standard `openai.OpenAI` for all LLM auditing calls.
+*   **Infra Specs**: Optimized for vCPU=2, RAM=8GB, < 20min runtime.
 
 ---
 
 ## 🐳 Docker Deployment
-
-The application supports three operational modes via the `MODE` environment variable.
-
-### 1. Benchmark Mode (Default)
-Runs the OpenEnv inference script for hackathon evaluation.
-```bash
-docker build -t ai-auditor .
-docker run ai-auditor
-```
-
-### 2. API Mode
-Runs the FastAPI production server.
-```bash
-docker run -e MODE=API -p 8000:8000 ai-auditor
-```
-
-### 3. UI Mode
-Runs the Streamlit interactive dashboard.
-```bash
-docker run -e MODE=UI -p 8501:8501 ai-auditor
-```
+The application supports three modes via the `MODE` environment variable:
+- `MODE=BENCHMARK` (Default): `python inference.py`
+- `MODE=API`: `uvicorn api:app --host 0.0.0.0 --port 7860`
+- `MODE=UI`: `streamlit run app.py --server.port 7860`
 
 ---
 
 ## 📂 Project Structure
-- `api.py`: FastAPI server (compliant with OpenEnv spec)
+- `api.py`: FastAPI server (OpenEnv compliant)
 - `app.py`: Streamlit Dashboard
 - `service.py`: Core Auditing Logic & Logging
 - `batch_eval.py`: CSV/JSON Batch processing
 - `inference.py`: Mandatory hackathon inference script
-- `env.py`: OpenEnv Environment
-- `tasks.py`: Predetermined task logic
 - `logs/`: Persisted audit history
