@@ -14,12 +14,11 @@ COPY . .
 # Create logs directory for the product mode
 RUN mkdir -p logs
 
-# Expose ports for API (8000) and Streamlit UI (8501)
-EXPOSE 8000
-EXPOSE 8501
+# Hugging Face Spaces MUST listen on Port 7860
+EXPOSE 7860
 
 # Entrypoint logic:
 # - Default: runs inference.py (Benchmark mode)
-# - MODE=API: runs FastAPI server
-# - MODE=UI: runs Streamlit dashboard
-CMD ["sh", "-c", "if [ \"$MODE\" = \"API\" ]; then uvicorn api:app --host 0.0.0.0 --port 8000; elif [ \"$MODE\" = \"UI\" ]; then streamlit run app.py --server.port 8501 --server.address 0.0.0.0; else python inference.py; fi"]
+# - MODE=API: runs FastAPI server on 7860
+# - MODE=UI: runs Streamlit dashboard on 7860
+CMD ["sh", "-c", "if [ \"$MODE\" = \"API\" ]; then uvicorn api:app --host 0.0.0.0 --port 7860; elif [ \"$MODE\" = \"UI\" ]; then streamlit run app.py --server.port 7860 --server.address 0.0.0.0; else python inference.py; fi"]
