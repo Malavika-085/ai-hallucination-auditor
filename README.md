@@ -1,3 +1,13 @@
+---
+title: AI Reliability & Risk Auditing System
+emoji: 🛡️
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+license: mit
+---
+
 # 🛡️ AI Reliability & Risk Auditing System
 
 **Transforming Hallucination Evaluation into Production-Grade Safeguards.**
@@ -65,32 +75,6 @@ docker run -e MODE=API -p 8000:8000 ai-auditor
 Runs the Streamlit interactive dashboard.
 ```bash
 docker run -e MODE=UI -p 8501:8501 ai-auditor
-```
-
----
-
-## 📡 API Usage Example
-
-**Endpoint**: `POST /audit`
-
-**Request Body**:
-```json
-{
-  "question": "What is the capital of Japan?",
-  "model_output": "Seoul"
-}
-```
-
-**Response**:
-```json
-{
-  "is_hallucination": true,
-  "confidence": 0.98,
-  "risk_level": "Medium",
-  "recommended_action": "Redact",
-  "score": 1.0,
-  "explanation": "Seoul is the capital of South Korea. Japan's capital is Tokyo."
-}
 ```
 
 ---
