@@ -1,8 +1,8 @@
 import os
 import json
 import logging
+import requests
 from typing import List, Dict, Any
-from openai import OpenAI
 from pydantic import ValidationError
 from env import HallucinationEnv
 from models import Action
@@ -17,7 +17,6 @@ API_KEY = os.environ["API_KEY"]
 MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o")
 
 def run_auditor():
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
     env = HallucinationEnv()
     
     all_task_rewards = []
@@ -37,26 +36,35 @@ def run_auditor():
         while not done and step_count < max_steps:
             step_count += 1
             
-            # Live API call through validator proxy
+            # Direct HTTP call to ensure proxy detection
+            url = f"{API_BASE_URL.rstrip('/')}/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {API_KEY}",
+                "Content-Type": "application/json"
+            }
+            data = {
+                "model": MODEL_NAME,
+                "messages": [
+                    {"role": "system", "content": "You are a hallucination auditor. Respond only in JSON."},
+                    {"role": "user", "content": f"Problem: {obs.question}\nAnswer: {obs.model_answer}\n\n"
+                                                "Decision Format:\n"
+                                                "{\n"
+                                                "  \"is_hallucination\": boolean,\n"
+                                                "  \"confidence\": float (0-1),\n"
+                                                "  \"risk_level\": \"Critical\" | \"High\" | \"Medium\" | \"Low\",\n"
+                                                "  \"recommended_action\": \"Redact\" | \"Verify\" | \"Review\",\n"
+                                                "  \"reasoning\": string\n"
+                                                "}"}
+                ],
+                "temperature": 0
+            }
+            
             try:
-                response = client.chat.completions.create(
-                    model=MODEL_NAME,
-                    messages=[
-                        {"role": "system", "content": "You are a hallucination auditor. Respond only in JSON."},
-                        {"role": "user", "content": f"Problem: {obs.question}\nAnswer: {obs.model_answer}\n\n"
-                                                    "Decision Format:\n"
-                                                    "{\n"
-                                                    "  \"is_hallucination\": boolean,\n"
-                                                    "  \"confidence\": float (0-1),\n"
-                                                    "  \"risk_level\": \"Critical\" | \"High\" | \"Medium\" | \"Low\",\n"
-                                                    "  \"recommended_action\": \"Redact\" | \"Verify\" | \"Review\",\n"
-                                                    "  \"reasoning\": string\n"
-                                                    "}"}
-                    ],
-                    temperature=0
-                )
+                response = requests.post(url, headers=headers, json=data, timeout=30)
+                response.raise_for_status()
                 
-                content = response.choices[0].message.content
+                result = response.json()
+                content = result["choices"][0]["message"]["content"]
                 action_data = json.loads(content)
                 action = Action(**action_data)
                 

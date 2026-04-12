@@ -1,8 +1,8 @@
 import json
 import os
+import requests
 from datetime import datetime
 from typing import Dict, Any, List
-from openai import OpenAI
 from .env import HallucinationEnv
 from .models import Action, Observation, RiskLevel, RecommendedAction
 from .tasks import grade_action, TASKS
@@ -12,12 +12,10 @@ class AuditService:
         self.env = HallucinationEnv()
         self.log_file = "logs/audit_log.json"
         
-        # Initialize OpenAI client with Validator Proxy credentials (STRICT ACCESS)
-        self.api_base_url = os.environ["API_BASE_URL"]
+        # Environment Configuration (STRICT)
+        self.api_base_url = os.environ["API_BASE_URL"].rstrip("/")
         self.api_key = os.environ["API_KEY"]
         self.model_name = os.environ.get("MODEL_NAME", "gpt-4o")
-        
-        self.client = OpenAI(base_url=self.api_base_url, api_key=self.api_key)
         
         os.makedirs("logs", exist_ok=True)
         if not os.path.exists(self.log_file):
@@ -26,34 +24,41 @@ class AuditService:
 
     def _get_auditor_response(self, question: str, model_answer: str) -> Action:
         """
-        Calls the live LLM proxy to audit the hallucination.
-        This ensures the LiteLLM proxy observes the API traffic.
+        Calls the live LLM proxy using raw requests to ensure 100% proxy compatibility.
         """
+        url = f"{self.api_base_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "model": self.model_name,
+            "messages": [
+                {"role": "system", "content": "You are a hallucination auditor. Respond only in JSON."},
+                {"role": "user", "content": f"Problem: {question}\nAnswer: {model_answer}\n\n"
+                                            "Decision Format:\n"
+                                            "{\n"
+                                            "  \"is_hallucination\": boolean,\n"
+                                            "  \"confidence\": float (0-1),\n"
+                                            "  \"risk_level\": \"Critical\" | \"High\" | \"Medium\" | \"Low\",\n"
+                                            "  \"recommended_action\": \"Redact\" | \"Verify\" | \"Review\",\n"
+                                            "  \"reasoning\": string\n"
+                                            "}"}
+            ],
+            "temperature": 0
+        }
+        
         try:
-            response = self.client.chat.completions.create(
-                model=self.model_name,
-                messages=[
-                    {"role": "system", "content": "You are a hallucination auditor. Respond only in JSON."},
-                    {"role": "user", "content": f"Problem: {question}\nAnswer: {model_answer}\n\n"
-                                                "Decision Format:\n"
-                                                "{\n"
-                                                "  \"is_hallucination\": boolean,\n"
-                                                "  \"confidence\": float (0-1),\n"
-                                                "  \"risk_level\": \"Critical\" | \"High\" | \"Medium\" | \"Low\",\n"
-                                                "  \"recommended_action\": \"Redact\" | \"Verify\" | \"Review\",\n"
-                                                "  \"reasoning\": string\n"
-                                                "}"}
-                ],
-                temperature=0
-            )
+            response = requests.post(url, headers=headers, json=data, timeout=30)
+            response.raise_for_status()
             
-            content = response.choices[0].message.content
+            result = response.json()
+            content = result["choices"][0]["message"]["content"]
             action_data = json.loads(content)
             return Action(**action_data)
             
         except Exception as e:
             print(f"API Error in AuditService: {e}")
-            # Fallback to a safe 'failed' action if the API is down
             return Action(
                 is_hallucination=False,
                 confidence=0.0,
@@ -70,12 +75,10 @@ class AuditService:
         
         # Try to find a matching predefined task for reward calculation
         score = 0.0
-        details = "Custom input - no ground truth for scoring"
         
         for task in TASKS:
             if task["question"] == question and task["model_answer"] == model_answer:
                 score = grade_action(action, task)
-                details = f"Matched predefined task: {task['difficulty']} level"
                 break
         
         result = {
@@ -115,7 +118,6 @@ class AuditService:
         return self.env.reset()
 
     def step(self, action_dict: Dict[str, Any]) -> Dict[str, Any]:
-        # Convert dict to Action model
         action = Action(**action_dict)
         obs, reward, done, info = self.env.step(action)
         return {
