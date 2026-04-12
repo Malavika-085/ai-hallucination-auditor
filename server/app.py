@@ -56,12 +56,12 @@ async def health_check():
 @app.post("/reset")
 async def reset_endpoint():
     """Reset the environment and return the first observation."""
-    return service.reset()
+    return await service.reset()
 
 @app.post("/step")
 async def step_endpoint(action: Dict[str, Any]):
     """Execute a step in the environment."""
-    return service.step(action)
+    return await service.step(action)
 
 @app.get("/state")
 async def state_endpoint():
