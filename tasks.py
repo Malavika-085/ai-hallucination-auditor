@@ -74,6 +74,6 @@ def grade_action(action: Action, task: Dict[str, Any]) -> float:
         
     # FINAL STEP: Ensure score is strictly between 0 and 1 (not 0.0 or 1.0)
     # as per strict validator requirements
-    total_score = max(0.01, min(0.99, reward))
+    total_score = max(0.05, min(0.95, reward))
     
     return total_score

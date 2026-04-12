@@ -3,6 +3,7 @@ import os
 import json
 import logging
 import textwrap
+import requests
 from typing import List, Optional, Dict, Any
 from openai import OpenAI
 from pydantic import ValidationError
@@ -13,16 +14,12 @@ from models import Action
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("AuditorInference")
 
-# 1. Read Environment Variables with Defaults (MANDATORY per Guidelines)
+# 1. Read Environment Variables with Defaults
 API_BASE_URL = os.getenv("API_BASE_URL", "https://proxy.hackathon.com/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o")
-HF_TOKEN = os.getenv("HF_TOKEN")
+HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("API_KEY", "dummy_token")
 
-if HF_TOKEN is None:
-    # We use a placeholder for local testing, but it is mandatory in the Space
-    HF_TOKEN = os.getenv("API_KEY", "dummy_token")
-
-# 2. Initialize OpenAI Client (MANDATORY: No direct HTTP calls)
+# 2. Initialize OpenAI Client
 client = OpenAI(
     base_url=API_BASE_URL,
     api_key=HF_TOKEN
@@ -44,10 +41,10 @@ def log_step(step: int, action: Any, reward: float, done: bool, error: Optional[
         flush=True,
     )
 
-def log_end(success: bool, steps: int, rewards: List[float]) -> None:
+def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    # Corrected format: Removed 'score' to match exact guideline specimen
-    print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}", flush=True)
+    # Match the example format exactly: 3 spaces after [END], include score
+    print(f"[END]   success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
 
 async def main() -> None:
     env = HallucinationEnv()
@@ -59,7 +56,7 @@ async def main() -> None:
         rewards: List[float] = []
         steps_taken = 0
         success = False
-        score = 0.0
+        score = 0.05
         
         log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
         
@@ -92,7 +89,6 @@ async def main() -> None:
                     action_str = str(action.is_hallucination)
                 except Exception as e:
                     logger.error(f"Inference error: {e}")
-                    # Safe fallback with mandatory fields
                     action = Action(
                         is_hallucination=False, 
                         confidence=0.0, 
@@ -112,15 +108,15 @@ async def main() -> None:
                 if done:
                     break
             
-            score = sum(rewards) / len(rewards) if rewards else 0.01
-            score = max(0.01, min(0.99, score)) # Strictly between 0 and 1
+            score = sum(rewards) / len(rewards) if rewards else 0.05
+            score = max(0.05, min(0.95, score)) # Strictly between 0 and 1
             all_task_rewards.append(score)
             success = score >= SUCCESS_SCORE_THRESHOLD
             
         finally:
-            log_end(success=success, steps=steps_taken, rewards=rewards)
+            log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
-    avg_score = sum(all_task_rewards) / len(all_task_rewards) if all_task_rewards else 0.0
+    avg_score = sum(all_task_rewards) / len(all_task_rewards) if all_task_rewards else 0.05
     print(f"\nFINAL REPRODUCIBLE BASELINE SCORE: {avg_score:.2f}")
 
 if __name__ == "__main__":
