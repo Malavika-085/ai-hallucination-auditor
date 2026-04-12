@@ -108,8 +108,8 @@ async def main() -> None:
                 if done:
                     break
             
-            score = sum(rewards) / len(rewards) if rewards else 0.05
-            score = max(0.05, min(0.95, score)) # Strictly between 0 and 1
+            score = sum(rewards) / len(rewards) if rewards else 0.1
+            score = max(0.1, min(0.9, score)) # Strictly between 0 and 1
             all_task_rewards.append(score)
             success = score >= SUCCESS_SCORE_THRESHOLD
             

@@ -73,7 +73,7 @@ def grade_action(action: Action, task: Dict[str, Any]) -> float:
         reward += 0.05
         
     # FINAL STEP: Ensure score is strictly between 0 and 1 (not 0.0 or 1.0)
-    # as per strict validator requirements
-    total_score = max(0.05, min(0.95, reward))
+    # as per strict validator requirements (using single decimal nudge)
+    total_score = max(0.1, min(0.9, reward))
     
     return total_score
