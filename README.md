@@ -38,10 +38,26 @@ The environment has been verified and is ready for Hackathon grading.
 ## 🛠️ Installation & Setup
 
 ### Mandatory Environment Variables
-Before running the inference script or the product mode, ensure the following are defined in your environment (or Space Secrets):
-- `API_BASE_URL`: `https://api-inference.huggingface.co/v1`
-- `MODEL_NAME`: `meta-llama/Llama-3-8B-Instruct`
-- `HF_TOKEN`: Your Hugging Face User Access Token (Write)
+Ensure the following are defined in your environment (or added as **Space Secrets** on Hugging Face):
+- `API_BASE_URL`: The proxy URL provided by the hackathon.
+- `API_KEY`: Your hackathon API key.
+- `MODEL_NAME`: The model name (e.g., `gpt-4o`).
+
+#### ☁️ Setting Secrets on Hugging Face
+If your project is deployed on a Hugging Face Space:
+1. Go to **Settings** > **Variables and Secrets**.
+2. Add `API_BASE_URL` and `API_KEY` as **Secrets**.
+3. **Restart the Space** to ensure the server picks up the new keys.
+
+## Pre-Submission Validation
+Before submitting, run the validation script to check your Space and Docker build.
+
+**For Private Spaces**: Export your Hugging Face token first.
+```bash
+export HF_TOKEN="hf_..."
+chmod +x validate-submission.sh
+./validate-submission.sh https://your-space.hf.space
+```
 
 ### Local Run (Windows)
 Simply run the provided batch file to install dependencies, run a test audit, and launch the UI:

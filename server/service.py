@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, Any, List
+from openai import OpenAI
 from .env import HallucinationEnv
 from .models import Action, Observation, RiskLevel, RecommendedAction
 from .tasks import grade_action, TASKS
@@ -10,6 +11,14 @@ class AuditService:
     def __init__(self):
         self.env = HallucinationEnv()
         self.log_file = "logs/audit_log.json"
+        
+        # Initialize OpenAI client with Validator Proxy credentials (STRICT ACCESS)
+        self.api_base_url = os.environ["API_BASE_URL"]
+        self.api_key = os.environ["API_KEY"]
+        self.model_name = os.environ.get("MODEL_NAME", "gpt-4o")
+        
+        self.client = OpenAI(base_url=self.api_base_url, api_key=self.api_key)
+        
         os.makedirs("logs", exist_ok=True)
         if not os.path.exists(self.log_file):
             with open(self.log_file, "w") as f:
@@ -17,42 +26,41 @@ class AuditService:
 
     def _get_auditor_response(self, question: str, model_answer: str) -> Action:
         """
-        Internal deterministic auditor engine.
-        Reuses the mock logic from inference.py but packaged for the service.
+        Calls the live LLM proxy to audit the hallucination.
+        This ensures the LiteLLM proxy observes the API traffic.
         """
-        if "Japan" in question:
-            return Action(
-                is_hallucination=True,
-                confidence=0.98,
-                risk_level=RiskLevel.MEDIUM,
-                recommended_action=RecommendedAction.REDACT,
-                reasoning="Seoul is the capital of South Korea. Japan's capital is Tokyo."
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": "You are a hallucination auditor. Respond only in JSON."},
+                    {"role": "user", "content": f"Problem: {question}\nAnswer: {model_answer}\n\n"
+                                                "Decision Format:\n"
+                                                "{\n"
+                                                "  \"is_hallucination\": boolean,\n"
+                                                "  \"confidence\": float (0-1),\n"
+                                                "  \"risk_level\": \"Critical\" | \"High\" | \"Medium\" | \"Low\",\n"
+                                                "  \"recommended_action\": \"Redact\" | \"Verify\" | \"Review\",\n"
+                                                "  \"reasoning\": string\n"
+                                                "}"}
+                ],
+                temperature=0
             )
-        elif "Treaty of Versailles" in question:
+            
+            content = response.choices[0].message.content
+            action_data = json.loads(content)
+            return Action(**action_data)
+            
+        except Exception as e:
+            print(f"API Error in AuditService: {e}")
+            # Fallback to a safe 'failed' action if the API is down
             return Action(
-                is_hallucination=True,
-                confidence=0.92,
-                risk_level=RiskLevel.HIGH,
-                recommended_action=RecommendedAction.VERIFY,
-                reasoning="The treaty was signed in 1919, not 1914. 1914 was the start of the war."
-            )
-        elif "Pyramid of Giza" in question:
-            return Action(
-                is_hallucination=True,
-                confidence=0.85,
-                risk_level=RiskLevel.HIGH,
+                is_hallucination=False,
+                confidence=0.0,
+                risk_level=RiskLevel.LOW,
                 recommended_action=RecommendedAction.REVIEW,
-                reasoning="The Great Pyramid of Giza is located in Egypt, not Italy."
+                reasoning=f"Audit failed due to technical error: {str(e)}"
             )
-        
-        # Fallback default
-        return Action(
-            is_hallucination=False,
-            confidence=0.5,
-            risk_level=RiskLevel.LOW,
-            recommended_action=RecommendedAction.REVIEW,
-            reasoning="No obvious hallucinations detected in fallback mode."
-        )
 
     def audit(self, question: str, model_answer: str) -> Dict[str, Any]:
         """
