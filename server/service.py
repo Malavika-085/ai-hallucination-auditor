@@ -59,6 +59,8 @@ class AuditService:
             # Note: In a production async environment, we would use httpx.
             # But for this auditor, requests with timeout is acceptable.
             response = requests.post(url, headers=headers, json=data, timeout=30)
+            if response.status_code != 200:
+                print(f"API Error ({response.status_code}): {response.text}")
             response.raise_for_status()
             
             result = response.json()

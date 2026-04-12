@@ -65,6 +65,8 @@ def get_model_message(obs: Any) -> str:
     
     try:
         response = requests.post(url, headers=headers, json=data, timeout=30)
+        if response.status_code != 200:
+            logger.error(f"API Error ({response.status_code}): {response.text}")
         response.raise_for_status()
         result = response.json()
         return result["choices"][0]["message"]["content"]
@@ -102,7 +104,14 @@ async def main() -> None:
                     action = Action(**action_data)
                     action_str = str(action.is_hallucination)
                 except Exception as e:
-                    action = Action(is_hallucination=False, confidence=0, reasoning=f"Parse error: {e}")
+                    # FALLBACK MUST INCLUDE ALL MANDATORY FIELDS
+                    action = Action(
+                        is_hallucination=False, 
+                        confidence=0.0, 
+                        risk_level="Low", 
+                        recommended_action="Review",
+                        reasoning=f"Parse error or API failure: {e}"
+                    )
                     action_str = "Error"
                 
                 obs, reward, done, info = await env.step(action)
