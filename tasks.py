@@ -72,4 +72,8 @@ def grade_action(action: Action, task: Dict[str, Any]) -> float:
     elif matches == 1:
         reward += 0.05
         
-    return max(0.0, min(1.0, reward))
+    # FINAL STEP: Ensure score is strictly between 0 and 1 (not 0.0 or 1.0)
+    # as per strict validator requirements
+    total_score = max(0.01, min(0.99, reward))
+    
+    return total_score
