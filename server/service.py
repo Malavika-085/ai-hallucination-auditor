@@ -1,15 +1,8 @@
 import json
 import os
-import requests
 from datetime import datetime
 from typing import Dict, Any, List
-# Importer from root
-import sys
-from pathlib import Path
-root_path = str(Path(__file__).parent.parent)
-if root_path not in sys.path:
-    sys.path.append(root_path)
-
+from openai import OpenAI
 from env import HallucinationEnv
 from models import Action, Observation, RiskLevel, RecommendedAction
 from tasks import grade_action, TASKS
@@ -19,10 +12,16 @@ class AuditService:
         self.env = HallucinationEnv()
         self.log_file = "logs/audit_log.json"
         
-        # Pull config with fallbacks
+        # 1. Environment Config with Mandatory Defaults
         self.api_base_url = os.environ.get("API_BASE_URL", "https://proxy.hackathon.com/v1").rstrip("/")
-        self.api_key = os.environ.get("API_KEY", "")
+        self.hf_token = os.environ.get("HF_TOKEN") or os.environ.get("API_KEY", "")
         self.model_name = os.environ.get("MODEL_NAME", "gpt-4o")
+        
+        # 2. Initialize OpenAI Client (MANDATORY per guidelines)
+        self.client = OpenAI(
+            base_url=self.api_base_url,
+            api_key=self.hf_token
+        )
         
         os.makedirs("logs", exist_ok=True)
         if not os.path.exists(self.log_file):
@@ -31,40 +30,27 @@ class AuditService:
 
     async def _get_auditor_response(self, question: str, model_answer: str) -> Action:
         """
-        Calls the live LLM proxy using raw requests.
+        Calls the live LLM proxy using the OpenAI SDK.
         """
-        url = f"{self.api_base_url}/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        data = {
-            "model": self.model_name,
-            "messages": [
-                {"role": "system", "content": "You are a hallucination auditor. Respond only in JSON."},
-                {"role": "user", "content": f"Problem: {question}\nAnswer: {model_answer}\n\n"
-                                            "Decision Format:\n"
-                                            "{\n"
-                                            "  \"is_hallucination\": boolean,\n"
-                                            "  \"confidence\": float (0-1),\n"
-                                            "  \"risk_level\": \"Critical\" | \"High\" | \"Medium\" | \"Low\",\n"
-                                            "  \"recommended_action\": \"Redact\" | \"Verify\" | \"Review\",\n"
-                                            "  \"reasoning\": string\n"
-                                            "}"}
-            ],
-            "temperature": 0
-        }
-        
         try:
-            # Note: In a production async environment, we would use httpx.
-            # But for this auditor, requests with timeout is acceptable.
-            response = requests.post(url, headers=headers, json=data, timeout=30)
-            if response.status_code != 200:
-                print(f"API Error ({response.status_code}): {response.text}")
-            response.raise_for_status()
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": "You are a hallucination auditor. Respond only in JSON."},
+                    {"role": "user", "content": f"Problem: {question}\nAnswer: {model_answer}\n\n"
+                                                "Decision Format:\n"
+                                                "{\n"
+                                                "  \"is_hallucination\": boolean,\n"
+                                                "  \"confidence\": float (0-1),\n"
+                                                "  \"risk_level\": \"Critical\" | \"High\" | \"Medium\" | \"Low\",\n"
+                                                "  \"recommended_action\": \"Redact\" | \"Verify\" | \"Review\",\n"
+                                                "  \"reasoning\": string\n"
+                                                "}"}
+                ],
+                temperature=0
+            )
             
-            result = response.json()
-            content = result["choices"][0]["message"]["content"]
+            content = response.choices[0].message.content
             action_data = json.loads(content)
             return Action(**action_data)
             
@@ -83,10 +69,7 @@ class AuditService:
         Performs an audit (Async).
         """
         action = await self._get_auditor_response(question, model_answer)
-        
-        # Try to find a matching predefined task for reward calculation
         score = 0.0
-        
         for task in TASKS:
             if task["question"] == question and task["model_answer"] == model_answer:
                 score = grade_action(action, task)
@@ -109,34 +92,19 @@ class AuditService:
         try:
             with open(self.log_file, "r") as f:
                 logs = json.load(f)
-            
-            logs.append({
-                "input": {"question": question, "model_answer": model_answer},
-                "output": result,
-            })
-            
+            logs.append({"input": {"question": question, "model_answer": model_answer}, "output": result})
             with open(self.log_file, "w") as f:
                 json.dump(logs, f, indent=4)
         except Exception as e:
             print(f"Logging error: {e}")
 
-    def get_logs(self) -> List[Dict[str, Any]]:
-        with open(self.log_file, "r") as f:
-            return json.load(f)
-
-    # OpenEnv Spec Compliance Endpoints
     async def reset(self) -> Observation:
         return await self.env.reset()
 
     async def step(self, action_dict: Dict[str, Any]) -> Dict[str, Any]:
         action = Action(**action_dict)
         obs, reward, done, info = await self.env.step(action)
-        return {
-            "observation": obs.dict(),
-            "reward": reward,
-            "done": done,
-            "info": info
-        }
+        return {"observation": obs.dict(), "reward": reward, "done": done, "info": info}
 
     def state(self) -> Dict[str, Any]:
         return self.env.state()
