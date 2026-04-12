@@ -51,9 +51,11 @@ class HallucinationEnv(Environment):
         pass
 
     def state(self) -> Dict[str, Any]:
+        task = TASKS[self.current_task_idx] if self.current_task_idx >= 0 else None
         return {
             "current_task_idx": self.current_task_idx,
-            "total_reward": self.total_reward,
+            "current_task_name": task["difficulty"] if task else "None",
+            "total_reward": round(self.total_reward, 2),
             "tasks_completed": self.current_task_idx + 1 if self.current_task_idx >= 0 else 0,
             "is_done": self.done
         }
