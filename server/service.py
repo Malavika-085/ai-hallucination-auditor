@@ -12,9 +12,9 @@ class AuditService:
         self.env = HallucinationEnv()
         self.log_file = "logs/audit_log.json"
         
-        # Environment Configuration (STRICT)
-        self.api_base_url = os.environ["API_BASE_URL"].rstrip("/")
-        self.api_key = os.environ["API_KEY"]
+        # Pull config with fallbacks to avoid startup crashes (KeyError)
+        self.api_base_url = os.environ.get("API_BASE_URL", "https://proxy.hackathon.com/v1")
+        self.api_key = os.environ.get("API_KEY", "")
         self.model_name = os.environ.get("MODEL_NAME", "gpt-4o")
         
         os.makedirs("logs", exist_ok=True)
